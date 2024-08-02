@@ -1,87 +1,87 @@
 import argparse
 import math
 import curses
+import time
 from PIL import Image, ImageDraw
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="3D Shape Renderer")
-    parser.add_argument("shape", choices=["cube", "pyramid"], help="Shape to render")
-    parser.add_argument("size", type=int, help="Size of the shape")
+    parser.add_argument("shape", choices=["cube", "pyramid"], nargs='?', default="cube", help="Shape to render")
+    parser.add_argument("size", type=int, nargs='?', default=40, help="Size of the shape")
     parser.add_argument("--x", type=float, default=0, help="Rotation angle around X-axis in degrees")
     parser.add_argument("--y", type=float, default=0, help="Rotation angle around Y-axis in degrees")
     parser.add_argument("--z", type=float, default=0, help="Rotation angle around Z-axis in degrees")
     parser.add_argument("--wireframe", action="store_true", help="Render as wireframe")
+    parser.add_argument("--auto", action="store_true", help="Enable automatic rotation")
     return parser.parse_args()
 
-def generate_cube(size):
+
+# --- SHAPES ---
+def cube(size):
     half = size / 2
     vertices = [
-        (-half, -half, -half), (half, -half, -half), (half, half, -half), (-half, half, -half),
-        (-half, -half, half), (half, -half, half), (half, half, half), (-half, half, half)
+        (-half, -half, -half),
+        (half, -half, -half),
+        (half, half, -half),
+        (-half, half, -half),
+        (-half, -half, half),
+        (half, -half, half),
+        (half, half, half),
+        (-half, half, half)
     ]
     edges = [
-        (0, 1), (1, 2), (2, 3), (3, 0),
-        (4, 5), (5, 6), (6, 7), (7, 4),
-        (0, 4), (1, 5), (2, 6), (3, 7)
+        (0, 1), (1, 2), (2, 3), (3, 0),  #bottom edges
+        (4, 5), (5, 6), (6, 7), (7, 4),  #top edges
+        (0, 4), (1, 5), (2, 6), (3, 7)   #vertical edges
     ]
     faces = [
-        (0, 1, 2, 3), (4, 5, 6, 7), (0, 1, 5, 4),
-        (2, 3, 7, 6), (0, 3, 7, 4), (1, 2, 6, 5)
+        (0, 1, 2, 3),  #bottom face
+        (4, 5, 6, 7),  #top face
+        (0, 1, 5, 4),  #front face
+        (2, 3, 7, 6),  #back face
+        (0, 3, 7, 4),  #left face
+        (1, 2, 6, 5)   #right face
     ]
     return vertices, edges, faces
 
-def generate_pyramid(size):
+def pyramid(size):
     half = size / 2
     vertices = [
-        (0, half, 0),  # Top vertex
+        (0, half, 0),
         (-half, -half, -half), (half, -half, -half), (half, -half, half), (-half, -half, half)
     ]
     edges = [
-        (0, 1), (0, 2), (0, 3), (0, 4),
-        (1, 2), (2, 3), (3, 4), (4, 1)
+        (0, 1), (0, 2), (0, 3), (0, 4),  #vertical edges
+        (1, 2), (2, 3), (3, 4), (4, 1)   #base edges
     ]
     faces = [
-        (0, 1, 2), (0, 2, 3), (0, 3, 4), (0, 4, 1),
-        (1, 2, 3, 4)
+        (0, 1, 2), (0, 2, 3), (0, 3, 4), (0, 4, 1),  #side faces
+        (1, 2, 3, 4)  #base face
     ]
     return vertices, edges, faces
 
-def rotate_y(vertex, angle):
+def rotate(vertex, angle_x, angle_y, angle_z):
     x, y, z = vertex
-    rad = math.radians(angle)
-    cos_a = math.cos(rad)
-    sin_a = math.sin(rad)
-    x_new = x * cos_a - z * sin_a
-    z_new = x * sin_a + z * cos_a
-    return (x_new, y, z_new)
-
-def rotate_x(vertex, angle):
-    x, y, z = vertex
-    rad = math.radians(angle)
-    cos_a = math.cos(rad)
-    sin_a = math.sin(rad)
-    y_new = y * cos_a - z * sin_a
-    z_new = y * sin_a + z * cos_a
-    return (x, y_new, z_new)
-
-def rotate_z(vertex, angle):
-    x, y, z = vertex
-    rad = math.radians(angle)
-    cos_a = math.cos(rad)
-    sin_a = math.sin(rad)
-    x_new = x * cos_a - y * sin_a
-    y_new = x * sin_a + y * cos_a
-    return (x_new, y_new, z)
+    rad_x, rad_y, rad_z = math.radians(angle_x), math.radians(angle_y), math.radians(angle_z)
+    cos_x, sin_x = math.cos(rad_x), math.sin(rad_x)
+    cos_y, sin_y = math.cos(rad_y), math.sin(rad_y)
+    cos_z, sin_z = math.cos(rad_z), math.sin(rad_z)
+    
+    y, z = y * cos_x - z * sin_x, y * sin_x + z * cos_x
+    x, z = x * cos_y - z * sin_y, x * sin_y + z * cos_y
+    x, y = x * cos_z - y * sin_z, x * sin_z + y * cos_z
+    
+    return (x, y, z)
 
 def project_vertex(vertex):
-    x, y, z = vertex
+    x, y, _ = vertex #ignore z coord
     return (int(x), int(y))
 
 def draw_shape(vertices, edges, faces, angle_x, angle_y, angle_z, img_size, wireframe):
     img = Image.new('L', (img_size, img_size), color=255)
     draw = ImageDraw.Draw(img)
     
-    rotated_vertices = [rotate_x(rotate_y(rotate_z(v, angle_z), angle_y), angle_x) for v in vertices]
+    rotated_vertices = [rotate(v, angle_x, angle_y, angle_z) for v in vertices]
     
     if wireframe:
         for edge in edges:
@@ -98,30 +98,29 @@ def draw_shape(vertices, edges, faces, angle_x, angle_y, angle_z, img_size, wire
             start, end = edge
             x1, y1 = project_vertex(rotated_vertices[start])
             x2, y2 = project_vertex(rotated_vertices[end])
-            draw.line((x1 + img_size // 2, y1 + img_size // 2, x2 + img_size // 2, y2 + img_size // 2), fill=0, width=3)  # Dark edges
+            draw.line((x1 + img_size // 2, y1 + img_size // 2, x2 + img_size // 2, y2 + img_size // 2), fill=0, width=3)  #Dark edges
     return img
 
 def image_to_ascii(img, chars):
     img = img.resize((img.width // 2, img.height // 2))
     pixels = img.getdata()
-    new_pixels = [chars[pixel // 25] for pixel in pixels]
-    new_pixels = ''.join(new_pixels)
+    new_pixels = ''.join(chars[pixel // 25] for pixel in pixels)
     
     new_width = img.width
     ascii_image = [new_pixels[index:index + new_width] for index in range(0, len(new_pixels), new_width)]
     return "\n".join(ascii_image)
 
-def render_shape(stdscr, vertices, edges, faces, angle_x, angle_y, angle_z, img_size, wireframe):
+def render_shape(stdscr, vertices, edges, faces, angle_x, angle_y, angle_z, img_size, wireframe, auto_rotate):
     stdscr.clear()
     img = draw_shape(vertices, edges, faces, angle_x, angle_y, angle_z, img_size, wireframe)
-    chars = ["@", "#", "S", "%", "?", "*", "+", ";", ":", ",", "."]
+    chars = ["@", "#", "S", "%", "?", "*", "+", ";", ":", ".", " "]
     ascii_art = image_to_ascii(img, chars)
     
     max_y, max_x = stdscr.getmaxyx()
     
     ascii_lines = ascii_art.split('\n')
     
-    # Ensure the ASCII art fits within the terminal dimensions
+    #ensure the ASCII art fits within the terminal dimensions
     for i, line in enumerate(ascii_lines):
         if i >= max_y:
             break
@@ -129,12 +128,26 @@ def render_shape(stdscr, vertices, edges, faces, angle_x, angle_y, angle_z, img_
     
     stdscr.refresh()
 
+    if auto_rotate:
+        return angle_x + 1, angle_y + 0.8, angle_z + 0.3
+    else:
+        key = stdscr.getch()
+        if key == curses.KEY_UP:
+            angle_x += 5
+        elif key == curses.KEY_DOWN:
+            angle_x -= 5
+        elif key == curses.KEY_LEFT:
+            angle_y -= 5
+        elif key == curses.KEY_RIGHT:
+            angle_y += 5
+        return angle_x, angle_y, angle_z
+
 def main(stdscr):
     args = parse_arguments()
     if args.shape == "cube":
-        vertices, edges, faces = generate_cube(args.size)
+        vertices, edges, faces = cube(args.size)
     elif args.shape == "pyramid":
-        vertices, edges, faces = generate_pyramid(args.size)
+        vertices, edges, faces = pyramid(args.size)
     
     img_size = 100
     angle_x, angle_y, angle_z = args.x, args.y, args.z
@@ -144,23 +157,8 @@ def main(stdscr):
     stdscr.timeout(100)
     
     while True:
-        render_shape(stdscr, vertices, edges, faces, angle_x, angle_y, angle_z, img_size, args.wireframe)
-        
-        key = stdscr.getch()
-        if key == curses.KEY_UP:
-            angle_x -= 5
-        elif key == curses.KEY_DOWN:
-            angle_x += 5
-        elif key == curses.KEY_LEFT:
-            angle_y -= 5
-        elif key == curses.KEY_RIGHT:
-            angle_y += 5
-        elif key == curses.KEY_PPAGE:
-            angle_z -= 5
-        elif key == curses.KEY_NPAGE:
-            angle_z += 5
-        elif key == ord('q'):
-            break
+        angle_x, angle_y, angle_z = render_shape(stdscr, vertices, edges, faces, angle_x, angle_y, angle_z, img_size, args.wireframe, args.auto)
+        time.sleep(1/100)
 
 if __name__ == "__main__":
     curses.wrapper(main)
