@@ -25,8 +25,6 @@ A little ASCII shape render engine for the terminal :)
 
 ## How It Works
 
-This script renders 3D shapes in the terminal using ASCII art. Here's a detailed breakdown of how it works:
-
 1. **Shape Representation**:
 
    Each shape (cube, pyramid) is represented using matrices. These matrices define the vertices (points in 3D space) and edges (connections between vertices) of the shape.
@@ -43,8 +41,8 @@ This script renders 3D shapes in the terminal using ASCII art. Here's a detailed
 
 4. **Rendering with Pillow lib**:
 
-   The Python Imaging Library (PIL) is used to create an image of the shape. An empty image canvas is created first. The edges of the shape are drawn on this canvas by connecting the projected 2D coordinates of the vertices.
-   If the `--wireframe` option is enabled, only the edges are drawn. Otherwise, the faces of the shape are filled (less dark than the edges).
+   The Python Imaging Library (PIL) is used to create an image of the shape. The edges of the shape are drawn on a canvas by connecting the projected 2D coordinates of the vertices.
+   Then, the faces of the shape are filled with a lighter coloring than the edges (this step is skipped if the `--wireframe` flag is passed).
 
 5. **ASCII Conversion**:
 
