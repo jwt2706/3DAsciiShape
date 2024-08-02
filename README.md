@@ -1,4 +1,4 @@
-# Terminal3DShapeViewer
+# 3D ASCII Shape
 
 ## Arguments
 
