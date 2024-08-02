@@ -1,5 +1,10 @@
 # 3D ASCII Shape
 
+A little ASCII shape render engine for the terminal :)
+
+<img src="./imgs/cube.png" alt="Screenshot of the maze" width="400" height="400"/>
+<img src="./imgs/pyramid.png" alt="Another screenshot of the maze" width="400" height="400"/>
+
 ## Arguments
 
 `python3 main.py cube 40`
